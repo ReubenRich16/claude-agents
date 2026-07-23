@@ -83,6 +83,19 @@ For each changed file, assess:
 - Are new public APIs/functions documented?
 - Do any changelogs need entries?
 
+### 7. Profile gates — React + Firebase SPA / data pipeline
+
+Apply when the repo matches this profile. Any unmet gate below is a **Must Fix**.
+
+- **Frozen code:** the diff must not touch strangler-fig v1 files (`utils/parser.js`, legacy `pages/`, v1 `components/**`). If it does, block.
+- **Pipeline determinism:** if the diff touches the parser/normalizer/matcher/enrichment, require that the fixture/diagnostics report diff is empty — or intentional AND explained in the commit — and that any checked-in baseline ratchet was regenerated deliberately (not silently widened).
+- **Pinned export formats:** changes to Xero/Jira/interchange output must update the checksum-pinned golden fixtures in lockstep; note that cross-repo formats fail tests in BOTH repos by design.
+- **Schema / rate-store:** renamed or removed material/labour field names? Check every binding (CSV import headers, matcher, pricing). New Firestore fields must be additive and have BOTH a read and a write path (flag write-only fields).
+- **Pricing/rounding changes:** confirm they're intended (owner-approved), routed through the decimal-safe helpers, and guarded so unaffected items are byte-identical.
+- **Destructive paths:** a newly-live delete/overwrite against production data needs a confirm guard and a note that it's irreversible under anonymous-auth siloing.
+- **Idempotency:** new or moved enrichment stages must be idempotent (safe under re-run) and must not reorder load-bearing phases.
+- **Green gates:** lint (0 warnings), tests, build, and the bundle-size budget all pass; docs updated if behaviour or schema changed.
+
 ## Output Format
 
 ```

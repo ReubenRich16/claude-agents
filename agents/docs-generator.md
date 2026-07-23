@@ -148,6 +148,23 @@ Write `docs/README.md`:
 
 A clean index page linking to every document with a one-line description of each.
 
+## Profile Addendum — React + Firebase SPA with a data pipeline
+
+When the project matches this profile, make sure ARCHITECTURE / CONVENTIONS / FILE_MAP explicitly capture the things that bite newcomers here (and that go stale fastest):
+
+- **Navigation model** — state-switch vs a real router (note if a router is mounted but unused), and the ACTUAL set of reachable views/tabs.
+- **Provider nesting** — the context-provider order in the app entry, and which screens are lazy-loaded.
+- **Strangler-fig boundary** — which code is frozen v1 vs active v2, which files are dead/orphaned, and the "never edit" list.
+- **Firestore layer** — collections, per-uid siloing (`artifacts/{uid}/…`), anonymous auth, read (snapshot) and write patterns, timestamp conventions, and `firestore.rules`.
+- **Schema, exactly** — real field names for the core documents (no invented ones); call out FK fields and rate-store columns that other layers bind to literally.
+- **Pipeline** — the load-bearing phase order (parse → normalize → enrich → price → export) and the idempotency requirement.
+- **Money rules** — GST-inclusive vs ex-GST, the rounding rule and where it's applied; state that margin is derived, not an input, if that's the case.
+- **Exports** — each format and its pin (checksum fixtures, cross-repo contracts).
+- **Build/CI** — the exact commands and the gates (`--max-warnings=0`, size budget, sourcemap flag).
+- **Landmines** — destructive prod paths, non-chunked batch writes, deliberately-disabled lint lines, and any frozen files.
+
+**Drift check (every run):** verify the hosting target, view set, schema fields, pricing model, test counts, and fixture paths against the CODE, not against the previous docs — these are the facts that most often lie in an evolving SPA.
+
 ## Update Mode
 
 If `docs/` already exists, read all existing documentation first, then:

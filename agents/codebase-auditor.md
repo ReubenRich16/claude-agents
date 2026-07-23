@@ -202,6 +202,38 @@ A lightweight pass (for deep security audit, delegate to the `security-reviewer`
 
 ---
 
+## PHASE 7 — REACT + FIREBASE SPA PROFILE (apply when it matches)
+
+Run this extra pass when the project is a React (CRA/Craco or Vite) SPA on Firebase with a data pipeline. Skip cleanly if it doesn't match.
+
+### 7.1 — Build & CI health (CRA/Craco)
+
+- Package manager is consistent: flag a committed `package-lock.json` sitting next to `yarn.lock` (or vice-versa) — there should be one lockfile of record.
+- CI enforces the real gates: lint with `--max-warnings=0`, test (one-shot, not watch), build, and a bundle-size budget (e.g. `size-limit`). Node pinned via `.nvmrc`; `GENERATE_SOURCEMAP=false` for prod.
+- Note whether `typecheck` is real or a stub, and whether `prettier` is configured but never run (a pending mass-reformat is a latent giant diff).
+
+### 7.2 — Firestore data layer
+
+- Read pattern: full-collection `onSnapshot` vs scoped queries/pagination (full-collection reads don't scale). Any collection read outside the standard hook (a one-off direct subscription) is worth surfacing.
+- Write pattern: transactions vs last-write-wins; optimistic vs snapshot-reconciled; are bulk writes chunked to the 500-op batch cap? (A single un-chunked `writeBatch` over a large import is a latent failure.)
+- Consistency: timestamp conventions (`serverTimestamp()` vs `new Date()` vs ISO string) and per-context error handling are often inconsistent — map them.
+
+### 7.3 — Strangler-fig & dead code
+
+- Quantify the v1-frozen surface vs the v2-active surface; list orphaned/dead files (present but imported by nobody). A growing dead-file set is drift.
+- Confirm the mounted-but-unused router / commented-out views / unreachable screens and count them.
+
+### 7.4 — Pipeline & test health
+
+- Is there a fixture-driven pipeline/regression suite with a checked-in baseline ratchet (so accuracy can't silently regress)? Are mocks deterministic (`nanoid`; no `Date.now()`/`Math.random()` in the golden path)?
+- Are cross-repo/export formats pinned by checksum fixtures?
+
+### 7.5 — Doc drift (high-value, frequently rotten)
+
+- Cross-check living docs (CLAUDE.md / README / blueprint) against the code for: hosting target, the actual view/route set, schema field names, the pricing/rounding model, test counts, and fixture paths. Doc drift here misleads every future contributor — list each contradiction as a finding.
+
+---
+
 ## AUDIT REPORT FORMAT
 
 ```

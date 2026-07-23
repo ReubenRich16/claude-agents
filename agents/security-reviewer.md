@@ -83,6 +83,19 @@ Before scanning, establish:
 - Weak random number generation (`Math.random()` for security-sensitive purposes)
 - Missing TLS certificate validation
 
+### 7. Firebase / Firestore client-side SPA specifics
+
+Apply when the app is a browser SPA backed by Firebase (Firestore + Firebase Auth). The trust boundary is the client — assume all client code and config are public.
+
+- **Firestore Security Rules are the real access control.** Confirm `firestore.rules` exists AND is deployed (wired into `firebase.json`, not merely present). Flag `allow read, write: if true`, rules that trust client-supplied fields, or collections with no rule at all. Shared/global collections must validate writes (field/type/size caps) and deny hard-delete where the app relies on soft-delete.
+- **Anonymous-auth data model.** If auth is anonymous-only, data is siloed per ephemeral uid (`artifacts/{uid}/…`). Flag this where real identity, an audit trail, or cross-device access is needed — and note that data under a lost uid is unrecoverable.
+- **Firebase web config is NOT a secret.** The `REACT_APP_FIREBASE_*` / `apiKey` values in the bundle are expected and safe — do NOT report them as leaked credentials. The real risk is a service-account JSON, Admin SDK key, or private token in client code, env files, or git history — scan for those specifically.
+- **`.env` hygiene.** `.env.local` must be gitignored; a tracked `.env` should hold only non-secret build flags. Check git history for a committed `.env` with real values (`git log -p --all -- '*.env'`).
+- **No sensitive data in `public/`.** Everything under `public/` ships in the build artifact and is world-readable. Flag customer data, internal cost/price databases, review docs, or fixtures served from `public/`.
+- **CSP & headers.** With `script-src 'self'` there must be no inline `<script>` (bootstrap logic belongs in an external file). Confirm CSP, `X-Frame-Options`, and `X-Content-Type-Options` are set in the hosting config's headers.
+- **Live-production data safety.** If the app reads/writes live prod data directly, destructive paths (delete-entire-collection, record delete) must be guarded (type-to-confirm) and never fire on mount. Flag unguarded destructive operations.
+- **Client-side parsing of untrusted input.** Document/clipboard extractors, base64/gzip deep-link fragment decoders, and any `dangerouslySetInnerHTML` are XSS/DoS surfaces — check bounds, type guards, and sanitisation.
+
 ## Output Format
 
 ### Findings (by severity)
