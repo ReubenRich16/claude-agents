@@ -101,6 +101,15 @@ Apply IN ADDITION to Passes 1–5 when the project matches this profile: a React
 ### UI conventions
 - Tailwind-only (no inline styles, no Bootstrap classnames in v2). Dark mode via an `html.dark` override sheet, not `dark:` variants (if that's the project's mechanism). Modals render inline with a focus trap; selects inside overflow-hidden cards portal to `document.body`.
 
+### App appendix — Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+A worked instance of the profile above for my main app of this type. Treat the repo's own `CLAUDE.md` as authoritative and verify against the code — these specifics drift.
+
+- **Frozen v1 (never edit):** `utils/parser.js`, legacy `pages/` screens, v1 `components/quote/*.js`. **Dead/orphaned (don't extend):** v1 `MaterialLineItemRow.js` & `PasteParserReview.js`, `XeroSummaryModal.js`, and v2 `ParserPrompts.js` + `BulkMaterialReview.js`. Live calculator: `pages/v2/Calculator.js`; live row: `components/quote/v2/MaterialLineItemRow.js`.
+- **enrichGroups order (load-bearing, do not reorder):** 1) match material + labour + inject + price → 2) `nestAuxiliaryItems` → 2.5) `roundWallWrapQuantities` → 3) `expandSupplyOnlyWrap` → 4) `injectSupplementaryLabour` → 5) note generators → 6) `detectAnomalies`. `normalizeAll` = 16 transforms in a fixed order.
+- **Money:** `mathUtils.safeAdd/safeMult/safeRound` (banker's, at the output boundary only); rates are GST-inclusive (`/1.1` for ex-GST); the high-ceiling `SI_BULK_ADDONS` is added to `quoteRate` before discount + GST; changing an item's material clears `priceOverride` and sets `_operatorMaterialLock`.
+- **Literal field names:** `materialId`, `labourId`, `s_i_timber`/`s_i_steel`, `sCostUnit`, `coverage`, `xeroKeySupply`/`xeroKeySupplyAndInstall`, `ceilingHeightBand`. The 5s debounced auto-save OVERWRITES the worksheet doc; session undo is memory-only (no cross-reload recovery).
+
 ## Output Format
 
 Organise findings by priority:

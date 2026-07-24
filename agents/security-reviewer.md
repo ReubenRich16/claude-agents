@@ -96,6 +96,16 @@ Apply when the app is a browser SPA backed by Firebase (Firestore + Firebase Aut
 - **Live-production data safety.** If the app reads/writes live prod data directly, destructive paths (delete-entire-collection, record delete) must be guarded (type-to-confirm) and never fire on mount. Flag unguarded destructive operations.
 - **Client-side parsing of untrusted input.** Document/clipboard extractors, base64/gzip deep-link fragment decoders, and any `dangerouslySetInnerHTML` are XSS/DoS surfaces — check bounds, type guards, and sanitisation.
 
+### App appendix — Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+A worked instance of §7 for my main app of this type. Treat the repo's own `CLAUDE.md` as authoritative and verify against the code.
+
+- Talks to **live production** Firestore (project `reuben-s-testt`), **anonymous-auth only**, per-uid silo `artifacts/{uid}/…`; data under a lost uid is unrecoverable.
+- `firestore.rules` exists AND is deployed (wired into `firebase.json`); the shared `colourKeywords` collection validates writes (field/size caps) and denies hard-delete (the app soft-deletes via a `deleted` flag).
+- The bundled `REACT_APP_FIREBASE_*` config is expected — NOT a leak. The tracked `.env` holds only build flags (`INLINE_RUNTIME_CHUNK`, `GENERATE_SOURCEMAP`); `.env.local` is gitignored.
+- Internal cost/customer data was moved OUT of `public/` (2026-07 remediation) — flag anything sensitive that reappears there. CSP is `script-src 'self'` (hence the external `public/theme-init.js`); security headers live in `firebase.json`.
+- Destructive prod paths are now guarded: worksheet delete (single-confirm) and `deleteEntireCollection('materials'|'labourRates')` (behind a type-to-confirm `DangerConfirmModal`). **Latent:** the bulk `writeBatch` in `CSVImporter` / `JobsContext.updateJobsBatch` is NOT chunked to the 500-op limit.
+
 ## Output Format
 
 ### Findings (by severity)

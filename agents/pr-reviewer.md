@@ -96,6 +96,16 @@ Apply when the repo matches this profile. Any unmet gate below is a **Must Fix**
 - **Idempotency:** new or moved enrichment stages must be idempotent (safe under re-run) and must not reorder load-bearing phases.
 - **Green gates:** lint (0 warnings), tests, build, and the bundle-size budget all pass; docs updated if behaviour or schema changed.
 
+### App appendix — Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+A worked instance of §7 for my main app of this type. Treat the repo's own `CLAUDE.md` as authoritative and verify against the code.
+
+- **Block** any diff touching frozen v1 (`utils/parser.js`, legacy `pages/`, v1 `components/quote/*`).
+- Diff touches parser/normalizer/matcher/enrichment → require the `parsing-diagnostics-report.txt` diff be empty (or intentional + explained) and the `parsingDiagnostics.baseline.json` ratchet regenerated deliberately.
+- Diff touches Xero/Jira/interchange output → the checksum-pinned fixtures (`xero-roundtrip.txt`, `interchange-v1.json`) must change in lockstep; note it fails tests in BOTH this repo and the site-checks repo.
+- Rate-store field renames → check `MaterialsManager` CSV mappings, `itemMatcher`, and `calculateTotals`. New Firestore fields additive only (watch write-only fields like `exportOverrideReason`).
+- Pricing/rounding change → owner-approved, routed through `mathUtils`, and byte-identical for unaffected items (e.g. the high-ceiling add-on is gated on `ceilingHeightBand`).
+
 ## Output Format
 
 ```

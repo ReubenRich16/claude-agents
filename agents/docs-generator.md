@@ -165,6 +165,10 @@ When the project matches this profile, make sure ARCHITECTURE / CONVENTIONS / FI
 
 **Drift check (every run):** verify the hosting target, view set, schema fields, pricing model, test counts, and fixture paths against the CODE, not against the previous docs — these are the facts that most often lie in an evolving SPA.
 
+### App appendix — Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+For my main app of this type, the authoritative living doc is the root `CLAUDE.md` (re-verified 2026-07-16); companions are `README.md`, `Project Blueprint.md`, `PARSING_PURPOSE.md`, and `docs/site-checks-integration.md`. When documenting or auditing it, re-check the traps that have bitten before: Firebase (not Vercel) hosting; the `dashboard | materials | labour | calculator | logic-lab` view set with site-check as an in-worksheet tab; rate-driven pricing with a **derived** margin; fixtures under `internal-data/`; and the stale dark-mode comment in `src/styles/tokens.css`. A prior drift audit lives at `docs/review/2026-07-16-doc-accuracy-and-regressions.md`.
+
 ## Update Mode
 
 If `docs/` already exists, read all existing documentation first, then:

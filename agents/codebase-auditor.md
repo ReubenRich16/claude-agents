@@ -232,6 +232,14 @@ Run this extra pass when the project is a React (CRA/Craco or Vite) SPA on Fireb
 
 - Cross-check living docs (CLAUDE.md / README / blueprint) against the code for: hosting target, the actual view/route set, schema field names, the pricing/rounding model, test counts, and fixture paths. Doc drift here misleads every future contributor — list each contradiction as a finding.
 
+### 7.6 — App appendix: Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+A worked instance of this profile. Treat the repo's own `CLAUDE.md` as authoritative and verify against the code.
+
+- **Yarn-only, but** a `package-lock.json` is committed next to `yarn.lock` (flag it). CI: lint (`--max-warnings=0`) → test (one-shot) → build (`GENERATE_SOURCEMAP=false`) → size (≤ 1000 KB). Node 22 via `.nvmrc`. `typecheck` is a no-op stub; `prettier` is configured but has never been run (~100+ file reformat pending).
+- **50 test files.** The diagnostics suite (`parsingDiagnostics.test.js` + `agents/agent01..16`) runs the full pipeline against `.docx` fixtures in `internal-data/` with a checked-in `parsingDiagnostics.baseline.json` regression ratchet (`UPDATE_DIAG_BASELINE=1`).
+- **Doc-drift already found & fixed here:** hosting is Firebase (not Vercel); views are `dashboard | materials | labour | calculator | logic-lab` (site-check is an in-worksheet tab); pricing is rate-driven with a derived margin (not `cost/(1−margin)`); fixtures live in `internal-data/`, not `public/`. Prior drift audit: `docs/review/2026-07-16-doc-accuracy-and-regressions.md`.
+
 ---
 
 ## AUDIT REPORT FORMAT
