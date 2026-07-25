@@ -76,6 +76,26 @@ If the user specifies files, test those. Otherwise:
 
 **Other frameworks**: Adapt to whatever the project uses. Match existing conventions exactly.
 
+### Profile: React + Firebase SPA with a data pipeline (Jest/craco)
+
+Apply when the project matches this profile:
+
+- **Runner:** Jest via `craco test --watchAll=false` (one-shot). Colocate `*.test.js` next to the module (pure logic often lives in `logic/v2/`).
+- **Determinism is mandatory.** If ids come from `nanoid`, use the project's fixed-id mock (e.g. `test-id-N`); never let `Date.now()` / `Math.random()` into a golden-path assertion — inject or mock clocks and ids.
+- **Test the pure core hardest.** Unit-test the parse/normalize/match/price functions directly; drive the whole pipeline through real fixtures (input → expected) rather than mounting the UI. Assert money to the cent, exercising banker's rounding and GST both ways.
+- **Idempotency & invariants:** add tests that run enrichment twice and assert the second pass is a no-op; assert phase-order-dependent behaviour; assert domain invariants (supply-only items accrue no labour, child items contribute $0, etc.).
+- **Never hit live Firebase.** Mock Firestore (don't call the network); anonymous-auth means no test data should be written at runtime. Fixtures only.
+- **Regression ratchets:** if there's a checked-in baseline/diagnostics file, update it only via the project's explicit flag (e.g. `UPDATE_*_BASELINE=1`), never by hand, and treat a widened baseline as a finding to report — not a silent pass.
+- **Contract tests:** for checksum-pinned exports (Xero/Jira/interchange), assert the generator reproduces the golden fixture byte-for-byte.
+
+#### App appendix — Insulation Pricing & Quoting Calculator (concrete instantiation)
+
+A worked instance of the profile above. Treat the repo's own `CLAUDE.md` as authoritative and verify against the code.
+
+- Runner: `craco test --watchAll=false`. `nanoid` is mocked to deterministic `test-id-N` (`src/__mocks__/nanoid.js`); `*.helpers.js` are excluded from discovery. Pure logic + colocated tests live in `logic/v2/`.
+- The pipeline is tested through real `.docx` fixtures in `internal-data/Parsing Diagnostics/` plus the materials/labour CSVs, gated by the `parsingDiagnostics.baseline.json` ratchet (regenerate only via `UPDATE_DIAG_BASELINE=1`).
+- Contract fixtures: `xeroExport` vs `src/__tests__/fixtures/xero-roundtrip.txt` (sha256-pinned) and the interchange golden `interchange-v1.json`. Assert money to the cent; never hit live Firebase.
+
 ### File Placement
 
 - Place test files adjacent to source files if that's the existing pattern
