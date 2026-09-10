@@ -242,6 +242,64 @@ A worked instance of this profile. Treat the repo's own `CLAUDE.md` as authorita
 
 ---
 
+### 7.7 — App appendix: Site Check (concrete instantiation)
+
+A second instance of this profile that differs from the calculator in ways that
+change the audit. Treat the repo's own `CLAUDE.md` as authoritative (re-verified
+2026-09-10) and verify against the code.
+
+**Shape:** Next.js 16 App Router, **static export** (`output: 'export'`) to
+Firebase Hosting; TypeScript strict; **Vitest** (node env, no jsdom, no component
+tests); Google sign-in + email/domain allowlist; five HTTPS Cloud Functions in one
+~1,066-line file. No v1/v2 split. No money — physical quantities only.
+
+**Measured baseline (2026-09-10, commit `3a1b0cf`)** — use these as the
+comparison point, and re-measure rather than trusting them:
+
+- 176 source files, **30,621 source LOC**, 57 test files, **12,605 test LOC**.
+- `npm test` → **1,299 passed, 1 skipped (1,300) across 56 passed + 1 skipped
+  files.** `pdf-analysis.test.ts` self-skips without a git-ignored fixture — normal.
+- typecheck, tests, `next build` and `cd functions && npm run build` all pass.
+- **Lint FAILS and is not a CI gate:** 39 errors, 25 warnings, dominated by
+  React-Compiler-era `react-hooks` rules. Report it as debt, not as breakage.
+- `npm audit`: 8 root (2 moderate, 6 high), 12 moderate in `functions/`. **None of
+  the six Next "high" advisories is reachable in a static export** — state that.
+- 100 `: any` / `as any`; 3 TODO/FIXME; 44 remote branches (16 already merged);
+  one lockfile (no conflict).
+- Largest: `ItemRow.tsx` 1,821 · `SiteCheckTracker.tsx` 1,757 ·
+  `MaterialMatchPage.tsx` 1,168 · `JiraPanel.tsx` 1,138 · `delivery.ts` 1,098 ·
+  `SiteCheckEditor.tsx` 1,089.
+
+**Where this codebase's real risk sits — check each:**
+
+1. **Coverage is inverted against risk.** 1,300 tests looks strong, but
+   `useSiteCheck`, `useAutoSave` and `useUndoRedo` are never invoked by a test,
+   `firestore.test.ts` mocks `runTransaction` so the `_version` optimistic-lock
+   body never executes, and `functions/` has no test script at all. The
+   best-tested code is the most deterministic; the least-tested guards users' data.
+2. **~187 assertions cannot fail** — six suites assert against hand-retyped copies
+   of production logic (`PipelineHeader.test.ts`, `jiraFilters.test.ts`,
+   `validation-regexes.test.ts`, `pdfMetadata.test.ts`, `ParsePreview.test.ts`,
+   `mobilePicker.test.ts`). Green ≠ parity.
+3. **`tsconfig.json` excludes `functions/`**, so a Cloud Functions type break
+   passes CI.
+4. **No production observability.** Sentry is configured then shipped disabled —
+   the deploy workflow never sets `NEXT_PUBLIC_SENTRY_DSN`. Score observability
+   separately; it is the one red category.
+5. **A flag-gated dead surface ships in the bundle** —
+   `NEXT_PUBLIC_RAIL_LAYOUT` is set nowhere.
+6. **`delivery.ts` grew 77%** while `docs/REFACTOR_PLAN.md` sat unexecuted, and
+   three screens plus the exporter depend on it.
+
+**Known live data defect:** `scripts/generate-materials.mjs` looks its CSV column
+up with a trailing space against a `.trim()`-keyed map, so all 217 products ship
+`coveragePerUnit: null` and MaterialMatch bag counts do not compute. Verify
+whether it is still present before reporting it.
+
+**Companion reports to cross-reference instead of duplicating:**
+`docs/reports/PIPELINE_REVIEW.md` (63 correctness/duplication/dead-code findings),
+`SECURITY_REVIEW.md`, `CODE_REVIEW.md`.
+
 ## AUDIT REPORT FORMAT
 
 ```

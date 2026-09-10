@@ -169,6 +169,64 @@ When the project matches this profile, make sure ARCHITECTURE / CONVENTIONS / FI
 
 For my main app of this type, the authoritative living doc is the root `CLAUDE.md` (re-verified 2026-07-16); companions are `README.md`, `Project Blueprint.md`, `PARSING_PURPOSE.md`, and `docs/site-checks-integration.md`. When documenting or auditing it, re-check the traps that have bitten before: Firebase (not Vercel) hosting; the `dashboard | materials | labour | calculator | logic-lab` view set with site-check as an in-worksheet tab; rate-driven pricing with a **derived** margin; fixtures under `internal-data/`; and the stale dark-mode comment in `src/styles/tokens.css`. A prior drift audit lives at `docs/review/2026-07-16-doc-accuracy-and-regressions.md`.
 
+### App appendix — Site Check (concrete instantiation)
+
+My second app of this family, and it differs from the calculator in ways that
+matter. Treat the repo's own `CLAUDE.md` as authoritative — it is unusually
+accurate and was re-verified 2026-09-10 — and verify against the code.
+
+**How it is NOT the calculator:** Next.js 16 App Router on a **static export**
+(`output: 'export'` — no SSR, no API routes, no server runtime), TypeScript
+strict throughout, **Vitest** (node environment, no jsdom, no component tests),
+**Google sign-in with an email/domain allowlist** rather than anonymous auth, and
+**no money anywhere** — it deals in physical quantities (m², LM, EA, bag counts),
+so the decimal-safe-arithmetic rules do not apply. There is **no strangler-fig
+v1/v2 split**. Firebase project `site-check-builder`, region
+`australia-southeast1`. Server code is five HTTPS Cloud Functions in one file.
+
+**The doc set:** the root `CLAUDE.md` is the authoritative living document
+(re-verified 2026-09-10) — treat it as the source of truth and keep it first.
+Companions: root `README.md` and `ROADMAP.md`, then `docs/` —
+`README` (index), `ARCHITECTURE`, `FILE_MAP`, `API_REFERENCE`, `SETUP`,
+`CONVENTIONS`, `HOW_TO`, `CHANGELOG` (documentation changes only), plus
+`how-to-tracker`, `Site_Check_Tracker_Spec`, `REFACTOR_PLAN`,
+`CALCULATOR_INTEGRATION` + `_PLAYBOOK`, `design-handover/` ×3 and `reports/` ×6.
+
+**The facts that rot fastest here — re-verify all of them against CODE every
+run.** Each of these was found wrong in the 2026-09 pass:
+
+- **Test counts.** Were documented as "855+ across 36 files" and "1000+";
+  actually 1,299 passed / 1 skipped across 57 files. Run the suite, don't copy.
+- **Typefaces.** Documented as Outfit + DM Sans; actually **Inter** + JetBrains
+  Mono since PR #123.
+- **Deployment.** Documented as manual; **hosting auto-deploys on merge to
+  `main`**. Functions, Firestore rules, indexes and Storage rules stay manual.
+- **The view set.** `AppView` has 8 members, `PIPELINE_ORDER` has 7 — `notes` is
+  the side-branch. There is **no router**; views switch on in-memory state, and
+  the only URL surfaces are startup (`?id=`, `?action=new`, `?view=`, `#import=`),
+  scrubbed immediately with `history.replaceState`.
+- **Counts of anything.** `jiraApi` actions (was 13, is 16), colour and category
+  constants, file line counts.
+- **Files that no longer exist** (`PageTitle.tsx`) and **panels that were
+  removed** (the Export page's per-stage Materials Summary).
+- **Function signatures** — `computeBagCount`, `uploadPhoto`, `buildProductGroups`
+  were all stale.
+- **Status claims in design and plan docs** — `CALCULATOR_INTEGRATION.md` said
+  "design proposal (no code yet)" long after Stage 1 shipped.
+
+**What the docs must capture and usually miss:** the strangler-free but
+**flag-gated dead surface** (`NEXT_PUBLIC_RAIL_LAYOUT` is set nowhere, so
+`RailItemsTable` and the `ItemInspectorContent` rail never render in production);
+the deliberate `ItemRow` ↔ `ItemInspectorContent` duplication; the three ID/key
+systems (nanoid ids, `groupKey`, `materialProductId` slugs); the wiki-markup
+token contract across three consumers; the service-worker `CACHE_NAME` bump
+discipline enforced by `scripts/check-sw-cache.mjs`; the two-repo checksum-pinned
+interchange fixtures; and that **lint is not a CI gate and is currently red**.
+
+**Never document a known defect as working.** At the time of writing, the shipped
+material database ships `coveragePerUnit: null` for all 217 products, so
+MaterialMatch bag counts do not compute. If it is still true, say so.
+
 ## Update Mode
 
 If `docs/` already exists, read all existing documentation first, then:
