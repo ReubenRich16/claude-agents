@@ -106,6 +106,71 @@ A worked instance of §7 for my main app of this type. Treat the repo's own `CLA
 - Rate-store field renames → check `MaterialsManager` CSV mappings, `itemMatcher`, and `calculateTotals`. New Firestore fields additive only (watch write-only fields like `exportOverrideReason`).
 - Pricing/rounding change → owner-approved, routed through `mathUtils`, and byte-identical for unaffected items (e.g. the high-ceiling add-on is gated on `ceilingHeightBand`).
 
+### App appendix — Site Check (concrete instantiation)
+
+My second app of this family, and it differs from the calculator in ways that
+matter. Treat the repo's own `CLAUDE.md` as authoritative — it is unusually
+accurate and was re-verified 2026-09-10 — and verify against the code.
+
+**How it is NOT the calculator:** Next.js 16 App Router on a **static export**
+(`output: 'export'` — no SSR, no API routes, no server runtime), TypeScript
+strict throughout, **Vitest** (node environment, no jsdom, no component tests),
+**Google sign-in with an email/domain allowlist** rather than anonymous auth, and
+**no money anywhere** — it deals in physical quantities (m², LM, EA, bag counts),
+so the decimal-safe-arithmetic rules do not apply. There is **no strangler-fig
+v1/v2 split**. Firebase project `site-check-builder`, region
+`australia-southeast1`. Server code is five HTTPS Cloud Functions in one file.
+
+**Gates for this repo — an unmet gate is a Must Fix:**
+
+- **`npm run typecheck && npm test && npx next build` must pass.** CI runs the
+  same three on a push and adds `scripts/check-sw-cache.mjs` on a PR. **Lint is
+  not a gate and is already red (39/25)** — do not block on it, but do block on
+  new violations in the diff.
+- **Diff touches `functions/`?** `tsconfig.json` excludes it, so CI will not
+  typecheck it. Require evidence of `cd functions && npm run build`.
+- **Diff touches a service-worker `APP_SHELL` file** (manifest, icons, PDF worker,
+  `material-database.json`)? It must bump `CACHE_NAME` in the same PR — CI fails
+  the PR otherwise, and without it the change deploys green and never reaches
+  installed phones.
+- **Diff touches the parser or `pdfExtractor`?** Require the full parser suite
+  green — `parser.test.ts`, `parser-new-format.test.ts`,
+  `parser-numbered-headers.test.ts`, `issued-format.test.ts`,
+  `new-format-pdfs.test.ts`. The heuristics (line-wrap rejoin, concatenated-row
+  splitting) are fragile.
+- **Diff touches the interchange envelope or either checksum-pinned fixture**
+  (`interchange-v1.json`, `xero-roundtrip.txt`)? The same SHA256 constants are
+  asserted in the pricing-calculator repo, so it fails tests in **both**. Require
+  an `INTERCHANGE_VERSION` bump and coordination. Never accept a fixture edited
+  to make a test pass. `.gitattributes` keeps them LF — watch for CRLF creep.
+- **Diff changes a wiki-markup token?** All three consumers must move together:
+  `exporter.ts` (emit), `wikiToAdf` (functions), `wikiToHtml` (`exportHtml.ts`).
+- **Diff touches `ItemRow.tsx`'s option builders?** `ItemInspectorContent.tsx`
+  must mirror them. Nothing enforces this and the rail that renders the Inspector
+  is unreachable in production, so the reviewer is the only check.
+- **Diff adds a SiteCheck mutation?** It must use an immutable spread and bump
+  `updatedAt`, or the edit never saves and never backs up.
+- **Diff touches the access allowlist?** It appears in three places
+  (`firestore.rules`, `src/config/access.ts`, `FORK_ALLOWED_*` in
+  `functions/src/index.ts`) — all three, plus `access-sync.test.ts`.
+- **Do-NOT list — any of these in a diff needs the owner, not a reviewer's
+  approval:** `formatGroupKey`'s shape, the material-DB slug algorithm, generated
+  files (`src/config/materialDatabase.ts`, `src/lib/brandPdf.ts`),
+  `customfield_10015`, JQL escaping in *either* builder, the Jira OAuth flow, the
+  CORS allowlist, `ALLOWED_LINK_ORIGINS`, the rules files, the `_version`
+  protocol, introducing `onSnapshot`, making `validateSiteCheck` blocking, and
+  letting job-pad text or ink reach an export.
+
+**Flag manual deploys in chat, not just on GitHub.** Run
+`git diff --name-only origin/main...HEAD -- functions/ firestore.rules storage.rules firestore.indexes.json`.
+Anything listed needs a `## Manual deploy needed` section in the PR body and the
+exact `firebase deploy --only …` command told to the user directly — **merging to
+`main` auto-deploys hosting only.**
+
+**PR convention:** open as **draft**, with a commit ledger, diff stat, a
+regression-safety story and a per-bullet test plan. After a PR merges its branch
+is dead — branch fresh from `main`.
+
 ## Output Format
 
 ```

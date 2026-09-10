@@ -110,6 +110,72 @@ A worked instance of the profile above for my main app of this type. Treat the r
 - **Money:** `mathUtils.safeAdd/safeMult/safeRound` (banker's, at the output boundary only); rates are GST-inclusive (`/1.1` for ex-GST); the high-ceiling `SI_BULK_ADDONS` is added to `quoteRate` before discount + GST; changing an item's material clears `priceOverride` and sets `_operatorMaterialLock`.
 - **Literal field names:** `materialId`, `labourId`, `s_i_timber`/`s_i_steel`, `sCostUnit`, `coverage`, `xeroKeySupply`/`xeroKeySupplyAndInstall`, `ceilingHeightBand`. The 5s debounced auto-save OVERWRITES the worksheet doc; session undo is memory-only (no cross-reload recovery).
 
+### App appendix — Site Check (concrete instantiation)
+
+My second app of this family, and it differs from the calculator in ways that
+matter. Treat the repo's own `CLAUDE.md` as authoritative — it is unusually
+accurate and was re-verified 2026-09-10 — and verify against the code.
+
+**How it is NOT the calculator:** Next.js 16 App Router on a **static export**
+(`output: 'export'` — no SSR, no API routes, no server runtime), TypeScript
+strict throughout, **Vitest** (node environment, no jsdom, no component tests),
+**Google sign-in with an email/domain allowlist** rather than anonymous auth, and
+**no money anywhere** — it deals in physical quantities (m², LM, EA, bag counts),
+so the decimal-safe-arithmetic rules do not apply. There is **no strangler-fig
+v1/v2 split**. Firebase project `site-check-builder`, region
+`australia-southeast1`. Server code is five HTTPS Cloud Functions in one file.
+
+**Review gates specific to this app:**
+
+- **No `onSnapshot`, ever.** Firestore is load-once persistence, not a live
+  source of truth. Flag any subscription introduced.
+- **Every SiteCheck mutation goes through a `useSiteCheck` callback**: immutable
+  spread plus `updatedAt: Date.now()`. Undo diffs by `JSON.stringify` equality and
+  autosave keys on `updatedAt`, so in-place mutation or a forgotten `updatedAt`
+  bump silently breaks both — the edit never saves and never backs up. The one
+  legitimate exception is `setVersion`.
+- **All writes go through `saveSiteCheck` / `saveTrackerData`** (`runTransaction`
+  + optimistic `_version` → `ConflictError`). `saveSiteCheck` is a full-document
+  `set()`. Every payload must pass `stripUndefined`. Zod validation is deliberately
+  non-blocking — keep it that way.
+- **`formatGroupKey()` is the only way to build a `groupKey`** (`${category}|${rValue}|${width}|${unit}`).
+  It joins MaterialMatch picks, Tracker product groups and exporter aggregation;
+  inlining the format string is a silent three-way break. Two call sites already
+  inline it — route a third through the helper instead.
+- **camelCase only.** No snake_case data fields. Underscore keys are Firestore
+  metadata only (`_version`, `_ts`).
+- **Wiki-markup export tokens are a three-way contract** — `exporter.ts` emits,
+  `wikiToAdf` (functions) and `wikiToHtml` (`exportHtml.ts`) both parse. A token
+  handled by two of three mangles content in one destination only. Change all
+  three together or not at all.
+- **`ItemRow.tsx` (1,821 lines) and `ItemInspectorContent.tsx` (922) duplicate
+  five option builders on purpose** and must stay identical — but the rail that
+  renders the Inspector is gated on `NEXT_PUBLIC_RAIL_LAYOUT`, which is **set
+  nowhere**, so a divergence is invisible in production. Flag the duplication as
+  a structural risk, not just a style issue.
+- **Lint is NOT a CI gate and is currently red** (39 errors, 25 warnings, almost
+  all React-Compiler-era `react-hooks` rules from `eslint-config-next` 16). Do not
+  treat a red lint as a regression; do not let new code add to it. The `refs` and
+  `set-state-in-effect` errors are mostly deliberate, justified patterns here.
+- **CI does not typecheck `functions/`** (`tsconfig.json` excludes it), so a
+  Cloud Functions type break passes. After touching that file, require
+  `cd functions && npm run build`.
+- Tailwind: `brand` (blue) = interactive, `accent` (orange) = SL identity.
+  `surface-*` maps to CSS vars that auto-flip in dark mode — **never add
+  `dark:*-surface-*`** (double-flips to invisible; a real past regression).
+- Two `DndContext` trees with different sensors and conventions. The **editor
+  parses no ids at all** — routing is entirely on `data.current.type` / `.sectionId`,
+  so the data shape is load-bearing and the id text is not. Only the Operations
+  Hub parses ids, and only `stage:` and `pool`.
+
+**Known live bug — do not "helpfully" patch the generated JSON.**
+`scripts/generate-materials.mjs` builds its column map with `col[h.trim()] = i`
+then looks the column up *with* a trailing space (`get('Coverage/Unit ')`), so all
+217 products in `public/material-database.json` ship `coveragePerUnit: null`.
+Breaks MaterialMatch bag counts, `delivery.ts`'s bag line and the Tracker's
+seeded counts. One-word fix at the call, then regenerate, then bump the SW
+`CACHE_NAME`. Raise it with the owner; never hand-edit the generated file.
+
 ## Output Format
 
 Organise findings by priority:

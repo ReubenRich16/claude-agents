@@ -106,6 +106,82 @@ A worked instance of §7 for my main app of this type. Treat the repo's own `CLA
 - Internal cost/customer data was moved OUT of `public/` (2026-07 remediation) — flag anything sensitive that reappears there. CSP is `script-src 'self'` (hence the external `public/theme-init.js`); security headers live in `firebase.json`.
 - Destructive prod paths are now guarded: worksheet delete (single-confirm) and `deleteEntireCollection('materials'|'labourRates')` (behind a type-to-confirm `DangerConfirmModal`). **Latent:** the bulk `writeBatch` in `CSVImporter` / `JobsContext.updateJobsBatch` is NOT chunked to the 500-op limit.
 
+### App appendix — Site Check (concrete instantiation)
+
+My second app of this family, and it differs from the calculator in ways that
+matter. Treat the repo's own `CLAUDE.md` as authoritative — it is unusually
+accurate and was re-verified 2026-09-10 — and verify against the code.
+
+**How it is NOT the calculator:** Next.js 16 App Router on a **static export**
+(`output: 'export'` — no SSR, no API routes, no server runtime), TypeScript
+strict throughout, **Vitest** (node environment, no jsdom, no component tests),
+**Google sign-in with an email/domain allowlist** rather than anonymous auth, and
+**no money anywhere** — it deals in physical quantities (m², LM, EA, bag counts),
+so the decimal-safe-arithmetic rules do not apply. There is **no strangler-fig
+v1/v2 split**. Firebase project `site-check-builder`, region
+`australia-southeast1`. Server code is five HTTPS Cloud Functions in one file.
+
+**Where the trust boundary actually sits:** the client is public, as in any SPA,
+but auth is **Google-only with a triplicated email/domain allowlist**
+(`firestore.rules` `isAllowedEmail()`, `src/config/access.ts`, `FORK_ALLOWED_*` in
+`functions/src/index.ts`; `access-sync.test.ts` guards parity). The bundled
+`NEXT_PUBLIC_FIREBASE_*` config — including the values hardcoded in
+`.github/workflows/deploy.yml` — is **public by design and is NOT a leak**. Hunt
+instead for a service-account JSON, an Admin SDK key, the Jira client secret or
+a Sentry auth token.
+
+**Judge every finding against a static export.** No SSR, no rewrites engine, no
+Image Optimization API, no Server Functions — so most Next.js advisories are
+unreachable here. Say so explicitly rather than repeating CVSS.
+
+**The specific things to check, and what was already found (2026-09-10):**
+
+- **Authentication ≠ authorisation.** Firebase Auth accepts *any* Google account;
+  the allowlist rejection is client-side and there is no Auth blocking function.
+  So check every server-side gate for whether it re-checks the allowlist. At last
+  audit: `storage.rules` gates on `request.auth != null` only, and `jiraAuth` /
+  `jiraApi` authenticate but never authorise. Consequence: any Google account is
+  a 5 MB-per-object file store and can use the Jira proxy on the owner's bill.
+- **`siteChecks` `allow update` does not pin the post-write `userId`**, so an
+  owner can hand a document into another user's collection. Victim UIDs are not
+  secret — photo download URLs embed them and go into Jira comments.
+- **`jiraAuth` takes the Firebase ID token as a URL query parameter** (it is a
+  full-page redirect). That writes a live one-hour bearer credential into Cloud
+  Run logs and browser history.
+- **`setAdminClaim`'s bootstrap token** is static, compared non-constant-time and
+  not single-use; the claim it grants unlocks `appConfig` — the shared material
+  database every user reads.
+- **Sentry is configured and then shipped disabled.** All three initialisers gate
+  on `NEXT_PUBLIC_SENTRY_DSN`, which the deploy workflow never sets
+  (`SENTRY_AUTH_TOKEN` is a build-time source-map credential, not the DSN). The
+  CSP `report-uri` keeps the Sentry project looking alive. **If you recommend
+  enabling it, recommend reviewing `sendDefaultPii: true` and the 10%/100%
+  session-replay sampling in the same change** — otherwise it starts shipping
+  customer addresses and premises photography to a third party.
+- **Client-side parsing surfaces:** the `#import=` deep link decompresses
+  attacker-supplied bytes with **no size bound** (gzip bomb — mitigated by the
+  fragment never leaving the browser and decoding being two-step); `renderPdfPages`
+  has no page cap unlike the quote path.
+- **Nothing sensitive may live under `public/`** — it all ships. Customer quote
+  PDFs were moved to `fixtures/` in `48371c8` and that holds; `out/` does still
+  publish the internal material-database CSV.
+- **No behavioural test coverage of the rules.** `access-sync.test.ts` only
+  string-matches allowlist literals off disk, so `allow read: if true` would pass
+  CI — and rules deploy manually, so repo and production can drift.
+
+**Genuine strengths — say so, and do not let a change undo them:** `jiraTokens`
+and `oauthState` are hard-denied to every client; cross-user reads and listing are
+provably impossible (for a `list`, `resource` is never null so the rule reduces to
+strict ownership); the allowlist regexes are unbypassable (anchored whole-string
+RE2, escaped dots, `[^@]+` local part, `.lower()` both sides); `email_verified` +
+`google.com` provider pinning; ID tokens verified with `verifyIdToken(token, true)`
+never decoded; OAuth state is 256 bits of `randBytes`, single-use, no open
+redirect; `appConfig` writes gated on the admin claim not domain membership;
+Storage content-type allowlist excludes SVG and `safeFetchPhoto` re-validates;
+photo URLs Zod-pinned to Firebase Storage hosts; the SW uses a same-origin
+allowlist; `jobLink.ts`'s `ID_PATTERN` guards a value that becomes a Firestore
+path; CSV export has an injection guard.
+
 ## Output Format
 
 ### Findings (by severity)

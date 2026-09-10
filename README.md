@@ -35,6 +35,48 @@ Every agent is hardened against codebase exfiltration:
 - Four of six agents are fully read-only (no `Write` or `Edit` access)
 - The two with write access are scoped: `test-writer` → test directories, `docs-generator` → `docs/`
 
+## App appendices
+
+Each agent carries a generic **profile** section (React + Firebase SPA with a
+data pipeline) followed by one **app appendix** per real project — a worked,
+concrete instantiation of that profile. The appendices exist because the generic
+advice is not enough: the specific landmines, frozen files, field names and
+known bugs are what actually save a session from breaking something.
+
+Two apps are covered:
+
+| Appendix | App |
+|---|---|
+| **Insulation Pricing & Quoting Calculator** | CRA/craco, JS, anonymous auth, strangler-fig v1/v2 split, money arithmetic, Jest |
+| **Site Check** | Next.js 16 static export, TypeScript strict, Google auth + allowlist, no v1/v2 split, physical quantities (no money), Vitest |
+
+They differ enough that conflating them causes real mistakes — the calculator's
+decimal-safe money rules do not apply to Site Check at all, and Site Check's
+`onSnapshot`-free load-once Firestore model is the opposite of the calculator's
+realtime subscriptions. Each appendix says up front how it differs.
+
+**Both appendices tell you to treat the repo's own `CLAUDE.md` as authoritative
+and verify against the code.** That is deliberate: an appendix in this repo
+cannot be updated by the PR that changes the app, so it goes stale. The
+appendix is a map of where to look and what has bitten before, not a
+specification.
+
+## ⚠️ Both repos symlink into the same directory
+
+`site-checks` carries its own copy of this suite at `agents/` with an identical
+`setup.sh`. **Both scripts link into `~/.claude/agents/`**, so whichever runs
+last wins — its `setup.sh` backs up or replaces the other's symlinks.
+
+The mitigation is to keep the two copies **identical**, so it does not matter
+which wins. This repo is canonical; `site-checks/agents/` is a synced copy.
+When you change an agent here, copy the file across in the same change:
+
+```bash
+cp ~/claude-agents/agents/*.md ~/site-checks/agents/
+```
+
+If the copies ever diverge, this repo is the one to trust.
+
 ## Usage
 
 In any Claude Code session:
